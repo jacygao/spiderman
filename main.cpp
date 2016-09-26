@@ -13,6 +13,9 @@ using namespace std;
 // Ideally we use an exteral queue servive (sqs/rabbitMQ) instead of global variable
 queue<string> linkStore;
 
+/*
+ *  reformat invalid URLs
+ */
 string reformatUrl(string url, string prefix, string host) {
    if (url.substr(0, prefix.size()) != prefix) {
       if (url.substr(0, 1) == "/" && url.length() > 1) {
@@ -22,6 +25,9 @@ string reformatUrl(string url, string prefix, string host) {
    return url;
 }
 
+/*
+ *  Check if URL is in valid format
+ */
 static bool isUrlValid(string url, string host) {
   // url variable is empty
   if(url.length() == 0) {
@@ -62,6 +68,9 @@ static bool isUrlValid(string url, string host) {
   return true;
 }
 
+/*
+ *  Check if URL is external
+ */
 static bool isExternalUrl(string url, string host) {
    if (url.substr(0, host.size()) != host) {
       return true;
@@ -69,6 +78,12 @@ static bool isExternalUrl(string url, string host) {
    return false;
 }
 
+/*
+ *  Finds the URLs of all links in the page
+ *  Validate if URL is valid
+ *	Validate if URL belongs to host
+ *	strip out params and hashes from URLs
+ */
 static void search_for_links(GumboNode* node, string host) {
   if (node->type != GUMBO_NODE_ELEMENT) {
     return;
@@ -89,6 +104,10 @@ static void search_for_links(GumboNode* node, string host) {
     search_for_links(static_cast<GumboNode*>(children->data[i]), host);
   }
 }
+
+/*
+ *  Get the cleantext of a page
+ */
 
 static string cleantext(GumboNode* node) {
   if (node->type == GUMBO_NODE_TEXT) {
@@ -111,6 +130,9 @@ static string cleantext(GumboNode* node) {
   }
 }
 
+/*
+ *  Remove all punctuation from HTML
+ */
 static string cleanPunct(string text) {
     for (int i = 0, len = text.size(); i < len; i++)
     {
@@ -148,6 +170,8 @@ static map<string,size_t> countUniqueWords(string text) {
  *  Add two maps together with the following behavior:
  *  If key exists add two key values together.
  *  If key does not exist. Insert pair to map.
+ *  This Method is used for calculating total as 
+ *	We'd like to filter out duplicate words across pages
  */
 static map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
 	for(auto it = map2.begin(); it != map2.end(); ++it) {
@@ -156,6 +180,9 @@ static map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<stri
 	return map1;
 }
 
+/*
+ *	Simple CURL functions to retrieve HTML
+ */
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
     ((string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
@@ -180,19 +207,22 @@ static string curl(string host){
 int main(int argc, char *argv[]){
   	cout << "Spiderman woke up..." << endl;
 
-	string host = argv[1]; //the url that will be entered
+  	//the url that will be entered
+	string host = argv[1];
 	int depth;
 
-	istringstream iss(argv[2]); //sstream object
-	
-	if(!(iss >> depth)) //valid number checking
+	//sstream object
+	istringstream iss(argv[2]);
+	//valid number checking
+	if(!(iss >> depth))
 	{
 		cout << "Invalid number: " << argv[2] << "\n";
 		return 0;
 	}
 	else
 	{
-		iss >> depth; //if valid save to int
+		//if valid save to int
+		iss >> depth;
 	}
 
 	cout << host << endl;
@@ -202,24 +232,27 @@ int main(int argc, char *argv[]){
     linkStore.push(host);
 
     map<string,size_t> uniqueWordsPerLink;
+    map<string,size_t> TotaluniqueWordsCount;
 
     while(current_depth <= depth && !linkStore.empty()){
         string url = linkStore.front();
-        // TODO: Convert invalid / incomplete urls
-        //url = reformatUrl(url, host, host);
+
         // check if url has been processed
         if ( uniqueWordsPerLink.find(url) == uniqueWordsPerLink.end() ) {
-          // TODOD: load string from user input
+
           // Curl
           string readBuffer = curl(url);
 
+          // Get Output string
           GumboOutput* output = gumbo_parse(readBuffer.c_str());
-          // Find all links in the html
-          // getLinks, insert to queue
+
           cout << "Currently Depth : " <<  current_depth << endl;
           cout << "Distance to the next level : " <<  distance << endl;
+          // Find all links in the html
+          // GetLinks, insert to queue
           search_for_links(output->root, host);
 
+          // reset distance and increase depth after all links of current depth have been processed
           if(distance <= 1){
             distance = linkStore.size();
             current_depth++;
@@ -229,14 +262,18 @@ int main(int argc, char *argv[]){
           // TODO: Only body content should be included
           map<string,size_t> totalWords = countUniqueWords(cleanPunct(cleantext(output->root)));
 
-          // Get count per url
+          // Get unique words count per url
           uniqueWordsPerLink[url] = totalWords.size();
 
+          // Get unique words count in total
+          TotaluniqueWordsCount = countTotalUniqueWord(TotaluniqueWordsCount, totalWords);
           // Print count per url
           cout << url << " : " << uniqueWordsPerLink[url] << endl;
+          cout << "Total unique words : " << TotaluniqueWordsCount.size() << endl;
           gumbo_destroy_output(&kGumboDefaultOptions, output);
         }
 
+        // Pop processed link off the queue and decrease distance
         linkStore.pop();
         distance--;
     }

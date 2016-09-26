@@ -219,7 +219,7 @@ static string curl(string host){
 }
 
 int main(int argc, char *argv[]){
-  	cout << "Spiderman woke up..." << endl;
+  	cout << "Spiderman wakes up..." << endl;
 
   	//the url that will be entered
 	string host = argv[1];
@@ -249,6 +249,13 @@ int main(int argc, char *argv[]){
     map<string,size_t> uniqueWordsPerLink;
     map<string,size_t> TotaluniqueWordsCount;
 
+    /*
+     *  Crawling Algorithm
+     *  When the process starts a new depth, reset distance based on queue size
+     *	Distance - 1 after every link gets processed
+     *	Depth + 1 after distance reaches 0
+     *	Stop the while loop if current depth is greater than defined depth or queue is empty
+     */
     while(current_depth <= depth && !linkStore.empty()){
         string url = linkStore.front();
 
@@ -263,6 +270,7 @@ int main(int argc, char *argv[]){
 
           cout << "Currently Depth : " <<  current_depth << endl;
           cout << "Distance to the next level : " <<  distance << endl;
+
           // Find all links in the html
           // GetLinks, insert to queue
           search_for_links(output->root, host);
@@ -273,8 +281,7 @@ int main(int argc, char *argv[]){
             current_depth++;
           }
 
-          // Get count per word
-          // TODO: Only body content should be included
+          // Get count per word for one page
           map<string,size_t> totalWords = countUniqueWords(cleanPunct(cleantext(output->root)));
 
           // Get unique words count per url
@@ -293,5 +300,6 @@ int main(int argc, char *argv[]){
         linkStore.pop();
         distance--;
     }
+    cout << "Spiderman goes to sleep..." << endl;
   	return 0;
 }

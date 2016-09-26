@@ -30,4 +30,4 @@ To run Spiderman, do:
       
 For example
 
-      ./a.out http://www.ea.com 2
+      ./a.out http://www.ea.com 1

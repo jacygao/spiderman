@@ -26,6 +26,20 @@ string reformatUrl(string url, string prefix, string host) {
 }
 
 /*
+ *  reformat invalid Host
+ *  valid host sample: https://www.ea.com
+ */
+string reformatHost(string url) {
+	if(url.substr(0, 4) != "http"){
+		url = "http://"+url;
+	}
+	if(url.substr(url.length() - 1) == "/"){
+		url.pop_back();
+	}
+	return url;
+}
+
+/*
  *  Check if URL is in valid format
  */
 static bool isUrlValid(string url, string host) {
@@ -209,8 +223,9 @@ int main(int argc, char *argv[]){
 
   	//the url that will be entered
 	string host = argv[1];
-	int depth;
+	host = reformatHost(host);
 
+	int depth;
 	//sstream object
 	istringstream iss(argv[2]);
 	//valid number checking
@@ -267,6 +282,7 @@ int main(int argc, char *argv[]){
 
           // Get unique words count in total
           TotaluniqueWordsCount = countTotalUniqueWord(TotaluniqueWordsCount, totalWords);
+
           // Print count per url
           cout << url << " : " << uniqueWordsPerLink[url] << endl;
           cout << "Total unique words : " << TotaluniqueWordsCount.size() << endl;

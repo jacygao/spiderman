@@ -22,7 +22,7 @@ Clone Spiderman repo
       
 To compile Spiderman, do:
 
-      g++ -std=c++14 -lcurl main.cpp `pkg-config --cflags --libs gumbo`
+      tools/all.sh
       
 To run Spiderman, do:
 

@@ -240,7 +240,7 @@ int main(int argc, char *argv[]){
 		iss >> depth;
 	}
 
-	cout << host << endl;
+	cout << "Starting from :" << host << endl;
     int current_depth = 0;
     int distance = 1;
 

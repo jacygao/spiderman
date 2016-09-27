@@ -42,7 +42,7 @@ string reformatHost(string url) {
 /*
  *  Check if URL is in valid format
  */
-static bool isUrlValid(string url, string host) {
+bool isUrlValid(string url, string host) {
   // url variable is empty
   if(url.length() == 0) {
     return false;
@@ -85,7 +85,7 @@ static bool isUrlValid(string url, string host) {
 /*
  *  Check if URL is external
  */
-static bool isExternalUrl(string url, string host) {
+bool isExternalUrl(string url, string host) {
    if (url.substr(0, host.size()) != host) {
       return true;
    }
@@ -98,7 +98,7 @@ static bool isExternalUrl(string url, string host) {
  *	Validate if URL belongs to host
  *	strip out params and hashes from URLs
  */
-static void search_for_links(GumboNode* node, string host) {
+void search_for_links(GumboNode* node, string host) {
   if (node->type != GUMBO_NODE_ELEMENT) {
     return;
   }
@@ -123,7 +123,7 @@ static void search_for_links(GumboNode* node, string host) {
  *  Get the cleantext of a page
  */
 
-static string cleantext(GumboNode* node) {
+string cleantext(GumboNode* node) {
   if (node->type == GUMBO_NODE_TEXT) {
     return string(node->v.text.text);
   } else if (node->type == GUMBO_NODE_ELEMENT &&
@@ -147,7 +147,7 @@ static string cleantext(GumboNode* node) {
 /*
  *  Remove all punctuation from HTML
  */
-static string cleanPunct(string text) {
+string cleanPunct(string text) {
     for (int i = 0, len = text.size(); i < len; i++)
     {
         if (ispunct(text[i]))
@@ -162,7 +162,7 @@ static string cleanPunct(string text) {
  *  Count total number of unique words in a string.
  */
 
-static map<string,size_t> countUniqueWords(string text) {
+map<string,size_t> countUniqueWords(string text) {
 	map<string,size_t> wordcount;
 	stringstream is(text);
 	string word;
@@ -187,7 +187,7 @@ static map<string,size_t> countUniqueWords(string text) {
  *  This Method is used for calculating total as 
  *	We'd like to filter out duplicate words across pages
  */
-static map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
+map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
 	for(auto it = map2.begin(); it != map2.end(); ++it) {
 		map1[it->first] += it->second;
 	}
@@ -197,12 +197,12 @@ static map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<stri
 /*
  *	Simple CURL functions to retrieve HTML
  */
-static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
     ((string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 
-static string curl(string host){
+string curl(string host){
 	CURL *curl;
 	CURLcode res;
 	string readBuffer;

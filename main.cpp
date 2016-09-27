@@ -4,9 +4,10 @@
 #include <string>
 #include <map>
 #include <queue>
-#include <curl/curl.h>
 #include <algorithm>
 #include "gumbo.h"
+#include "utils.h"
+#include "simple_curl.h"
 
 using namespace std;
 
@@ -14,100 +15,21 @@ using namespace std;
 queue<string> linkStore;
 
 /*
-*  reformat invalid URLs
-*/
-string reformatUrl(string url, string prefix, string host) {
-  if (url.substr(0, prefix.size()) != prefix) {
-    if (url.substr(0, 1) == "/" && url.length() > 1) {
-      return host += url;
-    }
-  }
-  return url;
-}
-
-/*
-*  reformat invalid Host
-*  valid host sample: https://www.ea.com
-*/
-string reformatHost(string url) {
-  if(url.substr(0, 4) != "http"){
-    url = "http://"+url;
-  }
-  if(url.substr(url.length() - 1) == "/"){
-    url.pop_back();
-  }
-  return url;
-}
-
-/*
-*  Check if URL is in valid format
-*/
-bool isUrlValid(string url, string host) {
-  // url variable is empty
-  if(url.length() == 0) {
-    return false;
-  }  
-  // url variable is hash trigger
-  if(url.substr(0,1) == "#") {
-    return false;
-  }
-  // url variable is adding param
-  if(url.substr(0,1) == "?") {
-    return false;
-  }
-  if(url.length() > 1) {
-    // url variable is adding param
-    if(url.substr(0,2) == "/?") {
-      return false;
-    }
-    // url variable is hash trigger
-    if(url.substr(0,2) == "/#") {
-      return false;
-    }
-    if(url.length() >= host.size()) {
-      if (url.substr(0, host.size()+1) == host+"?") {
-        return false;
-      }
-      if (url.substr(0, host.size()+1) == host+"#") {
-        return false;
-      }
-      if (url.substr(0, host.size()+2) == host+"/?") {
-        return false;
-      }
-      if (url.substr(0, host.size()+2) == host+"/#") {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-/*
-*  Check if URL is external
-*/
-bool isExternalUrl(string url, string host) {
-  if (url.substr(0, host.size()) != host) {
-    return true;
-  }
-  return false;
-}
-
-/*
-*  Finds the URLs of all links in the page
+*  Finds the URLs of all links in the page and push to queue
 *  Validate if URL is valid
 *	 Validate if URL belongs to host
 *	 Strip out params and hashes from URLs
 */
-void search_for_links(GumboNode* node, string host) {
+void searchLinks(GumboNode* node, string host) {
   if (node->type != GUMBO_NODE_ELEMENT) {
     return;
   }
   GumboAttribute* href;
   if (node->v.element.tag == GUMBO_TAG_A &&
     (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
-    if(isUrlValid(string(href->value), host)){
-      string url = reformatUrl(string(href->value), host, host);
-      if(!isExternalUrl(url, host)){
+    if(utils::isUrlValid(string(href->value), host)){
+      string url = utils::reformatUrl(string(href->value), host, host);
+      if(!utils::isExternalUrl(url, host)){
         linkStore.push(url);
       }
     }
@@ -115,7 +37,7 @@ void search_for_links(GumboNode* node, string host) {
 
   GumboVector* children = &node->v.element.children;
   for (unsigned int i = 0; i < children->length; ++i) {
-    search_for_links(static_cast<GumboNode*>(children->data[i]), host);
+    searchLinks(static_cast<GumboNode*>(children->data[i]), host);
   }
 }
 
@@ -123,7 +45,7 @@ void search_for_links(GumboNode* node, string host) {
 *  Get the cleantext of a page
 */
 
-string cleantext(GumboNode* node) {
+string cleanText(GumboNode* node) {
   if (node->type == GUMBO_NODE_TEXT) {
     return string(node->v.text.text);
   } else if (node->type == GUMBO_NODE_ELEMENT &&
@@ -132,11 +54,19 @@ string cleantext(GumboNode* node) {
     string contents = "";
     GumboVector* children = &node->v.element.children;
     for (unsigned int i = 0; i < children->length; ++i) {
-      const string text = cleantext((GumboNode*) children->data[i]);
+      const string text = cleanText((GumboNode*) children->data[i]);
       if (i != 0 && !text.empty()) {
         contents.append(" ");
       }
       contents.append(text);
+    }
+    //Remove all punctuations
+    for (int i = 0, len = contents.size(); i < len; i++)
+    {
+      if (ispunct(contents[i]))
+      {
+       contents.erase(i--, 1);
+      }
     }
     return contents;
   } else {
@@ -144,85 +74,14 @@ string cleantext(GumboNode* node) {
   }
 }
 
-/*
-*  Remove all punctuation from HTML
-*/
-string cleanPunct(string text) {
-  for (int i = 0, len = text.size(); i < len; i++)
-  {
-    if (ispunct(text[i]))
-    {
-      text.erase(i--, 1);
-    }
-  }
-  return text;
-}
-
-/*
-*  Count total number of unique words in a string.
-*/
-map<string,size_t> countUniqueWords(string text) {
-  map<string,size_t> wordcount;
-  stringstream is(text);
-  string word;
-  int number_of_words = 0;
-  while (is >> word)
-    if(wordcount.find(word) == wordcount.end()){
-      // Unique word
-      wordcount[word] = 1;
-    } 
-    else {
-      // Duplicate word
-      wordcount[word] += 1;
-    }
-
-    return wordcount;
-  }
-
-/*
-*  Add two maps together with the following behavior:
-*  If key exists add two key values together.
-*  If key does not exist. Insert pair to map.
-*  This Method is used for calculating total as 
-*	 We'd like to filter out duplicate words across pages
-*/
-map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
-  for(auto it = map2.begin(); it != map2.end(); ++it) {
-    map1[it->first] += it->second;
-  }
-  return map1;
-}
-
-/*
-*	 Simple CURL functions to retrieve HTML
-*/
-size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-  ((string*)userp)->append((char*)contents, size * nmemb);
-  return size * nmemb;
-}
-
-string curl(string host){
-  CURL *curl;
-  CURLcode res;
-  string readBuffer;
-
-  curl = curl_easy_init();
-  if(curl) {
-    curl_easy_setopt(curl, CURLOPT_URL, host.c_str());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-    res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
-  }
-  return readBuffer;
-}
-
 int main(int argc, char *argv[]){
+
   cout << "Spiderman wakes up..." << endl;
 
   //the url that will be entered
   string host = argv[1];
-  host = reformatHost(host);
+  //ensure host is in valid format
+  host = utils::reformatHost(host);
 
   int depth;
   //sstream object
@@ -262,7 +121,7 @@ int main(int argc, char *argv[]){
     if ( uniqueWordsPerLink.find(url) == uniqueWordsPerLink.end() ) {
 
       // Curl
-      string readBuffer = curl(url);
+      string readBuffer = simple_curl::curl(url);
 
       // Get Output string
       GumboOutput* output = gumbo_parse(readBuffer.c_str());
@@ -272,7 +131,7 @@ int main(int argc, char *argv[]){
 
       // Find all links in the html
       // GetLinks, insert to queue
-      search_for_links(output->root, host);
+      searchLinks(output->root, host);
 
       // reset distance and increase depth after all links of current depth have been processed
       if(distance <= 1){
@@ -281,13 +140,13 @@ int main(int argc, char *argv[]){
       }
 
       // Get count per word for one page
-      map<string,size_t> totalWords = countUniqueWords(cleanPunct(cleantext(output->root)));
+      map<string,size_t> totalWords = utils::countUniqueWords(cleanText(output->root));
 
       // Get unique words count per url
       uniqueWordsPerLink[url] = totalWords.size();
 
       // Get unique words count in total
-      TotaluniqueWordsCount = countTotalUniqueWord(TotaluniqueWordsCount, totalWords);
+      TotaluniqueWordsCount = utils::countTotalUniqueWord(TotaluniqueWordsCount, totalWords);
 
       // Print count per url
       cout << url << " : " << uniqueWordsPerLink[url] << endl;

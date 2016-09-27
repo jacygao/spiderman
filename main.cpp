@@ -14,34 +14,34 @@ using namespace std;
 queue<string> linkStore;
 
 /*
- *  reformat invalid URLs
- */
+*  reformat invalid URLs
+*/
 string reformatUrl(string url, string prefix, string host) {
-   if (url.substr(0, prefix.size()) != prefix) {
-      if (url.substr(0, 1) == "/" && url.length() > 1) {
-        return host += url;
-      }
-   }
-   return url;
+  if (url.substr(0, prefix.size()) != prefix) {
+    if (url.substr(0, 1) == "/" && url.length() > 1) {
+      return host += url;
+    }
+  }
+  return url;
 }
 
 /*
- *  reformat invalid Host
- *  valid host sample: https://www.ea.com
- */
+*  reformat invalid Host
+*  valid host sample: https://www.ea.com
+*/
 string reformatHost(string url) {
-	if(url.substr(0, 4) != "http"){
-		url = "http://"+url;
-	}
-	if(url.substr(url.length() - 1) == "/"){
-		url.pop_back();
-	}
-	return url;
+  if(url.substr(0, 4) != "http"){
+    url = "http://"+url;
+  }
+  if(url.substr(url.length() - 1) == "/"){
+    url.pop_back();
+  }
+  return url;
 }
 
 /*
- *  Check if URL is in valid format
- */
+*  Check if URL is in valid format
+*/
 bool isUrlValid(string url, string host) {
   // url variable is empty
   if(url.length() == 0) {
@@ -83,28 +83,28 @@ bool isUrlValid(string url, string host) {
 }
 
 /*
- *  Check if URL is external
- */
+*  Check if URL is external
+*/
 bool isExternalUrl(string url, string host) {
-   if (url.substr(0, host.size()) != host) {
-      return true;
-   }
-   return false;
+  if (url.substr(0, host.size()) != host) {
+    return true;
+  }
+  return false;
 }
 
 /*
- *  Finds the URLs of all links in the page
- *  Validate if URL is valid
- *	Validate if URL belongs to host
- *	strip out params and hashes from URLs
- */
+*  Finds the URLs of all links in the page
+*  Validate if URL is valid
+*	 Validate if URL belongs to host
+*	 Strip out params and hashes from URLs
+*/
 void search_for_links(GumboNode* node, string host) {
   if (node->type != GUMBO_NODE_ELEMENT) {
     return;
   }
   GumboAttribute* href;
   if (node->v.element.tag == GUMBO_TAG_A &&
-      (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
+    (href = gumbo_get_attribute(&node->v.element.attributes, "href"))) {
     if(isUrlValid(string(href->value), host)){
       string url = reformatUrl(string(href->value), host, host);
       if(!isExternalUrl(url, host)){
@@ -120,15 +120,15 @@ void search_for_links(GumboNode* node, string host) {
 }
 
 /*
- *  Get the cleantext of a page
- */
+*  Get the cleantext of a page
+*/
 
 string cleantext(GumboNode* node) {
   if (node->type == GUMBO_NODE_TEXT) {
     return string(node->v.text.text);
   } else if (node->type == GUMBO_NODE_ELEMENT &&
-             node->v.element.tag != GUMBO_TAG_SCRIPT &&
-             node->v.element.tag != GUMBO_TAG_STYLE) {
+    node->v.element.tag != GUMBO_TAG_SCRIPT &&
+    node->v.element.tag != GUMBO_TAG_STYLE) {
     string contents = "";
     GumboVector* children = &node->v.element.children;
     for (unsigned int i = 0; i < children->length; ++i) {
@@ -145,161 +145,161 @@ string cleantext(GumboNode* node) {
 }
 
 /*
- *  Remove all punctuation from HTML
- */
+*  Remove all punctuation from HTML
+*/
 string cleanPunct(string text) {
-    for (int i = 0, len = text.size(); i < len; i++)
+  for (int i = 0, len = text.size(); i < len; i++)
+  {
+    if (ispunct(text[i]))
     {
-        if (ispunct(text[i]))
-        {
-            text.erase(i--, 1);
-        }
+      text.erase(i--, 1);
     }
- 	return text;
+  }
+  return text;
 }
 
 /*
- *  Count total number of unique words in a string.
- */
-
+*  Count total number of unique words in a string.
+*/
 map<string,size_t> countUniqueWords(string text) {
-	map<string,size_t> wordcount;
-	stringstream is(text);
-	string word;
-	int number_of_words = 0;
-	while (is >> word)
-	  if(wordcount.find(word) == wordcount.end()){
-	  	// Unique word
-	  	wordcount[word] = 1;
-	  } 
-	  else {
-	  	// Duplicate word
-	  	wordcount[word] += 1;
-	  }
+  map<string,size_t> wordcount;
+  stringstream is(text);
+  string word;
+  int number_of_words = 0;
+  while (is >> word)
+    if(wordcount.find(word) == wordcount.end()){
+      // Unique word
+      wordcount[word] = 1;
+    } 
+    else {
+      // Duplicate word
+      wordcount[word] += 1;
+    }
 
-	return wordcount;
-}
+    return wordcount;
+  }
 
 /*
- *  Add two maps together with the following behavior:
- *  If key exists add two key values together.
- *  If key does not exist. Insert pair to map.
- *  This Method is used for calculating total as 
- *	We'd like to filter out duplicate words across pages
- */
+*  Add two maps together with the following behavior:
+*  If key exists add two key values together.
+*  If key does not exist. Insert pair to map.
+*  This Method is used for calculating total as 
+*	 We'd like to filter out duplicate words across pages
+*/
 map<string,size_t> countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
-	for(auto it = map2.begin(); it != map2.end(); ++it) {
-		map1[it->first] += it->second;
-	}
-	return map1;
+  for(auto it = map2.begin(); it != map2.end(); ++it) {
+    map1[it->first] += it->second;
+  }
+  return map1;
 }
 
 /*
- *	Simple CURL functions to retrieve HTML
- */
+*	 Simple CURL functions to retrieve HTML
+*/
 size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-    ((string*)userp)->append((char*)contents, size * nmemb);
-    return size * nmemb;
+  ((string*)userp)->append((char*)contents, size * nmemb);
+  return size * nmemb;
 }
 
 string curl(string host){
-	CURL *curl;
-	CURLcode res;
-	string readBuffer;
+  CURL *curl;
+  CURLcode res;
+  string readBuffer;
 
-	curl = curl_easy_init();
-	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, host.c_str());
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-		res = curl_easy_perform(curl);
-		curl_easy_cleanup(curl);
-	}
-	return readBuffer;
+  curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, host.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    res = curl_easy_perform(curl);
+    curl_easy_cleanup(curl);
+  }
+  return readBuffer;
 }
 
 int main(int argc, char *argv[]){
-  	cout << "Spiderman wakes up..." << endl;
+  cout << "Spiderman wakes up..." << endl;
 
-  	//the url that will be entered
-	string host = argv[1];
-	host = reformatHost(host);
+  //the url that will be entered
+  string host = argv[1];
+  host = reformatHost(host);
 
-	int depth;
-	//sstream object
-	istringstream iss(argv[2]);
-	//valid number checking
-	if(!(iss >> depth))
-	{
-		cout << "Invalid number: " << argv[2] << "\n";
-		return 0;
-	}
-	else
-	{
-		//if valid save to int
-		iss >> depth;
-	}
+  int depth;
+  //sstream object
+  istringstream iss(argv[2]);
+  //valid number checking
+  if(!(iss >> depth))
+  {
+    cout << "Invalid number: " << argv[2] << "\n";
+    return 0;
+  }
+  else
+  {
+    //if valid save to int
+    iss >> depth;
+  }
 
-	cout << "Starting from :" << host << endl;
-    int current_depth = 0;
-    int distance = 1;
+  cout << "Starting from :" << host << endl;
+  int current_depth = 0;
+  int distance = 1;
 
-    linkStore.push(host);
+  linkStore.push(host);
 
-    map<string,size_t> uniqueWordsPerLink;
-    map<string,size_t> TotaluniqueWordsCount;
+  map<string,size_t> uniqueWordsPerLink;
+  map<string,size_t> TotaluniqueWordsCount;
 
-    /*
-     *  Crawling Algorithm
-     *  When the process starts a new depth, reset distance based on queue size
-     *	Distance - 1 after every link gets processed
-     *	Depth + 1 after distance reaches 0
-     *	Stop the while loop if current depth is greater than defined depth or queue is empty
-     */
-    while(current_depth <= depth && !linkStore.empty()){
-        string url = linkStore.front();
+  /*
+  *  Crawling Algorithm
+  *  When the process starts a new depth, reset distance based on queue size
+  *	 Distance - 1 after every link gets processed
+  *	 Depth + 1 after distance reaches 0
+  *	 Stop the while loop if current depth is greater than defined depth or queue is empty
+  */
+  while(current_depth <= depth && !linkStore.empty()){
+    string url = linkStore.front();
 
-        // check if url has been processed
-        if ( uniqueWordsPerLink.find(url) == uniqueWordsPerLink.end() ) {
+    // check if url has been processed
+    if ( uniqueWordsPerLink.find(url) == uniqueWordsPerLink.end() ) {
 
-          // Curl
-          string readBuffer = curl(url);
+      // Curl
+      string readBuffer = curl(url);
 
-          // Get Output string
-          GumboOutput* output = gumbo_parse(readBuffer.c_str());
+      // Get Output string
+      GumboOutput* output = gumbo_parse(readBuffer.c_str());
 
-          cout << "Currently Depth : " <<  current_depth << endl;
-          cout << "Distance to the next level : " <<  distance << endl;
+      cout << "Currently Depth : " <<  current_depth << endl;
+      cout << "Distance to the next level : " <<  distance << endl;
 
-          // Find all links in the html
-          // GetLinks, insert to queue
-          search_for_links(output->root, host);
+      // Find all links in the html
+      // GetLinks, insert to queue
+      search_for_links(output->root, host);
 
-          // reset distance and increase depth after all links of current depth have been processed
-          if(distance <= 1){
-            distance = linkStore.size();
-            current_depth++;
-          }
+      // reset distance and increase depth after all links of current depth have been processed
+      if(distance <= 1){
+        distance = linkStore.size();
+        current_depth++;
+      }
 
-          // Get count per word for one page
-          map<string,size_t> totalWords = countUniqueWords(cleanPunct(cleantext(output->root)));
+      // Get count per word for one page
+      map<string,size_t> totalWords = countUniqueWords(cleanPunct(cleantext(output->root)));
 
-          // Get unique words count per url
-          uniqueWordsPerLink[url] = totalWords.size();
+      // Get unique words count per url
+      uniqueWordsPerLink[url] = totalWords.size();
 
-          // Get unique words count in total
-          TotaluniqueWordsCount = countTotalUniqueWord(TotaluniqueWordsCount, totalWords);
+      // Get unique words count in total
+      TotaluniqueWordsCount = countTotalUniqueWord(TotaluniqueWordsCount, totalWords);
 
-          // Print count per url
-          cout << url << " : " << uniqueWordsPerLink[url] << endl;
-          cout << "Total unique words : " << TotaluniqueWordsCount.size() << endl;
-          gumbo_destroy_output(&kGumboDefaultOptions, output);
-        }
-
-        // Pop processed link off the queue and decrease distance
-        linkStore.pop();
-        distance--;
+      // Print count per url
+      cout << url << " : " << uniqueWordsPerLink[url] << endl;
+      cout << "Total unique words : " << TotaluniqueWordsCount.size() << endl;
+      gumbo_destroy_output(&kGumboDefaultOptions, output);
     }
-    cout << "Spiderman goes to sleep..." << endl;
-  	return 0;
+
+    // Pop processed link off the queue and decrease distance
+    linkStore.pop();
+    distance--;
+  }
+
+  cout << "Spiderman goes to sleep..." << endl;
+  return 0;
 }

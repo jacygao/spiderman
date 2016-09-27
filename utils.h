@@ -3,7 +3,7 @@
 
 using namespace std;
 
-class utils {
+class Utils {
 	private:
 
 	public:

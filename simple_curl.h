@@ -3,7 +3,7 @@
 
 using namespace std;
 
-class simple_curl {
+class Simple_curl {
 	private:
 		static size_t writeCallback(void *contents, size_t size, size_t nmemb, void *userp);
 	public:

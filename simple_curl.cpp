@@ -4,12 +4,12 @@
 /*
 *	 Simple CURL functions to retrieve HTML
 */
-size_t simple_curl::writeCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+size_t Simple_curl::writeCallback(void *contents, size_t size, size_t nmemb, void *userp) {
   ((string*)userp)->append((char*)contents, size * nmemb);
   return size * nmemb;
 }
 
-string simple_curl::curl(string host){
+string Simple_curl::curl(string host){
   CURL *curl;
   CURLcode res;
   string readBuffer;

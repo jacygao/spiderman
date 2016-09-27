@@ -9,7 +9,7 @@ using namespace std;
 /*
 *  reformat invalid URLs
 */
-string utils::reformatUrl(string url, string prefix, string host) {
+string Utils::reformatUrl(string url, string prefix, string host) {
   if (url.substr(0, prefix.size()) != prefix) {
     if (url.substr(0, 1) == "/" && url.length() > 1) {
       return host += url;
@@ -22,7 +22,7 @@ string utils::reformatUrl(string url, string prefix, string host) {
 *  reformat invalid Host
 *  valid host sample: https://www.ea.com
 */
-string utils::reformatHost(string url) {
+string Utils::reformatHost(string url) {
   if(url.substr(0, 4) != "http"){
     url = "http://"+url;
   }
@@ -35,7 +35,7 @@ string utils::reformatHost(string url) {
 /*
 *  Check if URL is in valid format
 */
-bool utils::isUrlValid(string url, string host) {
+bool Utils::isUrlValid(string url, string host) {
   // url variable is empty
   if(url.length() == 0) {
     return false;
@@ -78,7 +78,7 @@ bool utils::isUrlValid(string url, string host) {
 /*
 *  Check if URL is external
 */
-bool utils::isExternalUrl(string url, string host) {
+bool Utils::isExternalUrl(string url, string host) {
   if (url.substr(0, host.size()) != host) {
     return true;
   }
@@ -88,7 +88,7 @@ bool utils::isExternalUrl(string url, string host) {
 /*
 *  Count total number of unique words in a string.
 */
-map<string,size_t> utils::countUniqueWords(string text) {
+map<string,size_t> Utils::countUniqueWords(string text) {
   map<string,size_t> wordcount;
   stringstream is(text);
   string word;
@@ -113,7 +113,7 @@ map<string,size_t> utils::countUniqueWords(string text) {
 *  This Method is used for calculating total as 
 *  We'd like to filter out duplicate words across pages
 */
-map<string,size_t> utils::countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
+map<string,size_t> Utils::countTotalUniqueWord(map<string,size_t> map1, map<string,size_t> map2) {
   for(auto it = map2.begin(); it != map2.end(); ++it) {
     map1[it->first] += it->second;
   }
